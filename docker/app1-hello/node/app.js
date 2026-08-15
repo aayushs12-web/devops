@@ -12,4 +12,11 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: "UP",
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.listen(PORT, () => console.log(`Node Hello listening on ${PORT}`));
