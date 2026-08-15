@@ -27,14 +27,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 21 JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
       - name: Make mvnw Executable
-        run: chmod +x mvnw
+        run: |
+          sed -i 's/\r$//' mvnw
+          chmod +x mvnw
 
       - name: Check Java & Maven Version
         run: |
