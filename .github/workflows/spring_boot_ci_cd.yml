@@ -1,0 +1,87 @@
+name: Spring Boot CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker/app1-hello/springboot/hello-spring/**'
+      - '.github/workflows/spring_boot_ci_cd.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docker/app1-hello/springboot/hello-spring/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build, Test & Package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docker/app1-hello/springboot/hello-spring
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Check Java & Maven Version
+        run: |
+          java -version
+          ./mvnw --version
+
+      - name: Make mvnw Executable
+        run: chmod +x mvnw
+
+      - name: Run Unit Tests & Check Code
+        run: ./mvnw test
+
+      - name: Build & Package Application
+        run: ./mvnw clean package -DskipTests=false
+
+      - name: Upload Build Artifacts (JAR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-boot-app-jar
+          path: docker/app1-hello/springboot/hello-spring/target/*.jar
+          retention-days: 5
+
+  docker-build-push:
+    name: Docker Build & Push to Docker Hub
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: docker/app1-hello/springboot/hello-spring
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/app1-hello/springboot/hello-spring
+          file: docker/app1-hello/springboot/hello-spring/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/hello-spring:latest
+            ${{ secrets.DOCKER_USERNAME }}/hello-spring:${{ github.sha }}
