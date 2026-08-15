@@ -87,21 +87,25 @@ jobs:
 
       - name: Debug Secret Presence (Length Check)
         run: |
-          echo "Username length: ${#DOCKERHUB_USERNAME}"
-          echo "Token length: ${#DOCKERHUB_TOKEN}"
+          echo "DOCKERHUB_USERNAME length: ${#DOCKERHUB_USERNAME}"
+          echo "DOCKERHUB_TOKEN length: ${#DOCKERHUB_TOKEN}"
+          echo "DOCKER_PASSWORD length: ${#DOCKER_PASSWORD}"
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Verify Docker Hub Credentials Secret
         run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "❌ ERROR: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secret is missing!"
+          D_USER="${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}"
+          D_TOKEN="${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}"
+          if [ -z "$D_TOKEN" ]; then
+            echo "❌ ERROR: No Docker Hub Password or Token secret found in GitHub!"
             echo "👉 Go to: https://github.com/aayushs12-web/devops/settings/secrets/actions"
-            echo "👉 Add DOCKERHUB_USERNAME (e.g. aayushlabs) and DOCKERHUB_TOKEN (Personal Access Token)."
+            echo "👉 Add 'DOCKERHUB_TOKEN' under Repository secrets (NOT Environment secrets)."
             exit 1
           else
-            echo "✅ Docker secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are present."
+            echo "✅ Docker authentication secret found. Logging in as user: $D_USER"
           fi
 
       - name: Set up Docker Buildx
@@ -110,8 +114,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}
+          password: ${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
