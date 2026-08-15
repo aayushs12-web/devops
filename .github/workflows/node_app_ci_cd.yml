@@ -1,0 +1,104 @@
+name: Node.js App CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker/app1-hello/node/**'
+      - '.github/workflows/node_app_ci_cd.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docker/app1-hello/node/**'
+  workflow_dispatch:
+
+env:
+  DOCKER_REPO: aayushlabs/hello-node
+  NODE_VERSION: '20'
+  PIPELINE_ENV: staging
+
+jobs:
+  build-and-test:
+    name: Build, Test & Package Node App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docker/app1-hello/node
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: docker/app1-hello/node/package.json
+
+      - name: Verify Versions, System PATH & Environment
+        run: |
+          echo "=== Node & NPM Version Info ==="
+          node -v
+          npm -v
+          echo "=== System PATH ==="
+          echo $PATH
+          echo "=== Set Environment Variables ==="
+          echo "PIPELINE_ENV=${{ env.PIPELINE_ENV }}"
+          echo "NODE_ENV=test" >> $GITHUB_ENV
+
+      - name: Install Application Dependencies
+        run: npm install
+
+      - name: Run Unit Tests & Validation
+        run: npm test
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app-build-artifacts
+          path: |
+            docker/app1-hello/node/app.js
+            docker/app1-hello/node/package.json
+            docker/app1-hello/node/Dockerfile
+          retention-days: 5
+
+  docker-build-push:
+    name: Docker Build & Push to Docker Hub
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: docker/app1-hello/node
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app-build-artifacts
+          path: docker/app1-hello/node
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/app1-hello/node
+          file: docker/app1-hello/node/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REPO }}:latest
+            ${{ env.DOCKER_REPO }}:${{ github.sha }}
