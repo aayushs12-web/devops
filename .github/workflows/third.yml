@@ -1,4 +1,4 @@
-name: Second CI
+name: REal dev Ci demo CI
 on:
     workflow_dispatch:
 jobs:
@@ -6,4 +6,4 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Echo
-              run: echo "Hello World"
+              run: echo "Hello World from third CI"
