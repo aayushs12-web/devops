@@ -31,7 +31,7 @@ __pycache__/
 **/target/
 **/build/
 **/.gradle/
-**/.mvn/
+**/.mvn/wrapper/maven-wrapper.jar
 *.class
 
 # Maven

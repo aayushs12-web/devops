@@ -41,18 +41,29 @@ jobs:
 
       - name: Make mvnw Executable
         run: |
-          sed -i 's/\r$//' mvnw
-          chmod +x mvnw
+          if [ -f "mvnw" ]; then
+            sed -i 's/\r$//' mvnw
+            chmod +x mvnw
+          fi
 
       - name: Verify Environment & Maven Version
         run: |
           echo "=== Java Version ==="
           java -version
           echo "=== Maven Version ==="
-          ./mvnw --version
+          if [ -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
+            ./mvnw --version
+          else
+            mvn --version
+          fi
 
       - name: Run Unit Tests & Code Check
-        run: ./mvnw clean test
+        run: |
+          if [ -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
+            ./mvnw clean test
+          else
+            mvn clean test
+          fi
 
       - name: Upload Test Reports Artifacts
         if: always()
@@ -63,7 +74,12 @@ jobs:
           retention-days: 5
 
       - name: Build & Package Application JAR
-        run: ./mvnw package -DskipTests=false
+        run: |
+          if [ -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
+            ./mvnw package -DskipTests=false
+          else
+            mvn package -DskipTests=false
+          fi
 
       - name: Upload Build Artifacts (JAR)
         uses: actions/upload-artifact@v4
