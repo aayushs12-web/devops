@@ -8,7 +8,8 @@ app.get("/", (req, res) => {
   res.json({
     message: "Hello from Simple App (Node)",
     env: ENV,
-    container: HOSTNAME
+    container: HOSTNAME,
+    status: "active"
   });
 });
 
