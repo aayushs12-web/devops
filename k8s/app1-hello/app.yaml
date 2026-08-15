@@ -1,25 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app1-hello
+  name: app1-hello-spring
+  labels:
+    app: app1-hello-spring
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: app1-hello
+      app: app1-hello-spring
   template:
     metadata:
       labels:
-        app: app1-hello
+        app: app1-hello-spring
     spec:
       containers:
-        - name: app1-hello
-          image: embarkx/hello-spring:latest
-          #env:
-          #   - name: ENV_VALUE
-          #     value: "Welcome to MyApp"
-          #   - name: DB_PASSWORD
-          #     value: "Admin@1234"
+        - name: app1-hello-spring
+          image: aayushlabs/hello-spring:latest
+          imagePullPolicy: IfNotPresent
           env:
             - name: ENV_VALUE
               valueFrom:
@@ -31,7 +29,6 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: DB_PASSWORD
-
           resources:
             requests:
               memory: "256Mi"
@@ -39,18 +36,17 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "512m"
-
           ports:
             - containerPort: 8080
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: app1-hello
+  name: app1-hello-spring-service
 spec:
   type: NodePort
   selector:
-    app: app1-hello
+    app: app1-hello-spring
   ports:
     - port: 8080
       targetPort: 8080

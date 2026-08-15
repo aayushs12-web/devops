@@ -7,6 +7,7 @@ on:
     paths:
       - 'docker/app1-hello/springboot/hello-spring/**'
       - '.github/workflows/spring_boot_ci_cd.yml'
+      - 'k8s/app1-hello/**'
   pull_request:
     branches:
       - main
@@ -14,9 +15,14 @@ on:
       - 'docker/app1-hello/springboot/hello-spring/**'
   workflow_dispatch:
 
+env:
+  DOCKER_REPO: aayushlabs/hello-spring
+  JAVA_VERSION: '21'
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+
 jobs:
   build-and-test:
-    name: Build, Test & Package
+    name: Build, Test & Package Spring Boot App
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,7 +35,7 @@ jobs:
       - name: Set up Java 21 JDK
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: maven
 
@@ -38,16 +44,26 @@ jobs:
           sed -i 's/\r$//' mvnw
           chmod +x mvnw
 
-      - name: Check Java & Maven Version
+      - name: Verify Environment & Maven Version
         run: |
+          echo "=== Java Version ==="
           java -version
+          echo "=== Maven Version ==="
           ./mvnw --version
 
-      - name: Run Unit Tests & Check Code
-        run: ./mvnw test
+      - name: Run Unit Tests & Code Check
+        run: ./mvnw clean test
 
-      - name: Build & Package Application
-        run: ./mvnw clean package -DskipTests=false
+      - name: Upload Test Reports Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-boot-surefire-test-reports
+          path: docker/app1-hello/springboot/hello-spring/target/surefire-reports/
+          retention-days: 5
+
+      - name: Build & Package Application JAR
+        run: ./mvnw package -DskipTests=false
 
       - name: Upload Build Artifacts (JAR)
         uses: actions/upload-artifact@v4
@@ -75,14 +91,37 @@ jobs:
           name: spring-boot-app-jar
           path: docker/app1-hello/springboot/hello-spring/target
 
+      - name: Debug Secret Presence (Length Check)
+        run: |
+          echo "DOCKERHUB_USERNAME length: ${#DOCKERHUB_USERNAME}"
+          echo "DOCKERHUB_TOKEN length: ${#DOCKERHUB_TOKEN}"
+          echo "DOCKER_PASSWORD length: ${#DOCKER_PASSWORD}"
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Verify Docker Hub Credentials Secret
+        run: |
+          D_USER="${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}"
+          D_TOKEN="${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}"
+          if [ -z "$D_TOKEN" ]; then
+            echo "❌ ERROR: No Docker Hub Password or Token secret found in GitHub Secrets!"
+            echo "👉 Go to: https://github.com/aayushs12-web/devops/settings/secrets/actions"
+            echo "👉 Add 'DOCKERHUB_TOKEN' under Repository secrets."
+            exit 1
+          else
+            echo "✅ Docker secret is present. Authenticating as: $D_USER"
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}
+          password: ${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
@@ -91,5 +130,5 @@ jobs:
           file: docker/app1-hello/springboot/hello-spring/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/hello-spring:latest
-            ${{ secrets.DOCKER_USERNAME }}/hello-spring:${{ github.sha }}
+            ${{ env.DOCKER_REPO }}:latest
+            ${{ env.DOCKER_REPO }}:${{ github.sha }}
