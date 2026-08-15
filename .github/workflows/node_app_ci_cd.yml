@@ -18,6 +18,7 @@ env:
   DOCKER_REPO: aayushlabs/hello-node
   NODE_VERSION: '22'
   PIPELINE_ENV: staging
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
 jobs:
   build-and-test:
@@ -83,6 +84,15 @@ jobs:
         with:
           name: node-app-build-artifacts
           path: docker/app1-hello/node
+
+      - name: Verify Docker Hub Credentials Secret
+        run: |
+          if [ -z "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "❌ ERROR: DOCKER_PASSWORD secret is missing in GitHub Repository Secrets!"
+            echo "👉 Go to: https://github.com/aayushs12-web/devops/settings/secrets/actions"
+            echo "👉 Add 'DOCKER_USERNAME' (value: aayushlabs) and 'DOCKER_PASSWORD' (value: your Docker Hub Password or Token)."
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
