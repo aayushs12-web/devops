@@ -87,13 +87,15 @@ jobs:
 
       - name: Verify Docker Hub Credentials Secret
         run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "❌ ERROR: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secret is missing!"
+          USER_VAL="${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}"
+          PASS_VAL="${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}"
+          if [ -z "$PASS_VAL" ]; then
+            echo "❌ ERROR: No Docker Hub Password or Token secret found in GitHub Secrets!"
             echo "👉 Go to: https://github.com/aayushs12-web/devops/settings/secrets/actions"
-            echo "👉 Add DOCKERHUB_USERNAME (e.g. aayushlabs) and DOCKERHUB_TOKEN (Personal Access Token)."
+            echo "👉 Click 'New repository secret' and add 'DOCKERHUB_TOKEN' (Personal Access Token)."
             exit 1
           else
-            echo "✅ Docker secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are present."
+            echo "✅ Docker secrets found for username: $USER_VAL"
           fi
 
       - name: Set up Docker Buildx
@@ -102,8 +104,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME || secrets.DOCKER_USERNAME || 'aayushlabs' }}
+          password: ${{ secrets.DOCKERHUB_TOKEN || secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
