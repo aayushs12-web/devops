@@ -33,13 +33,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Make mvnw Executable
+        run: chmod +x mvnw
+
       - name: Check Java & Maven Version
         run: |
           java -version
           ./mvnw --version
-
-      - name: Make mvnw Executable
-        run: chmod +x mvnw
 
       - name: Run Unit Tests & Check Code
         run: ./mvnw test
