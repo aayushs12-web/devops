@@ -5,20 +5,20 @@ on:
     branches:
       - main
     paths:
-      - 'docker/app1-hello/node/**'
-      - '.github/workflows/node_app_ci_cd.yml'
+      - "docker/app1-hello/node/**"
+      - ".github/workflows/node_app_ci_cd.yml"
   pull_request:
     branches:
       - main
     paths:
-      - 'docker/app1-hello/node/**'
+      - "docker/app1-hello/node/**"
   workflow_dispatch:
 
 env:
   DOCKER_REPO: aayushlabs/hello-node
-  NODE_VERSION: '22'
+  NODE_VERSION: "22"
   PIPELINE_ENV: staging
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
 jobs:
   build-and-test:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: docker/app1-hello/node/package.json
 
       - name: Verify Versions, System PATH & Environment
@@ -87,14 +87,13 @@ jobs:
 
       - name: Verify Docker Hub Credentials Secret
         run: |
-          SECRET_PASS="${{ secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN || secrets.DOCKER_HUB_PASSWORD || secrets.DOCKER_HUB_TOKEN || secrets.DOCKERHUB_TOKEN }}"
-          if [ -z "$SECRET_PASS" ]; then
-            echo "❌ ERROR: No Docker Hub Password or Token secret found in GitHub Secrets!"
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "❌ ERROR: DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secret is missing!"
             echo "👉 Go to: https://github.com/aayushs12-web/devops/settings/secrets/actions"
-            echo "👉 Add Secret 'DOCKER_PASSWORD' (or 'DOCKER_TOKEN') with your Docker Hub Personal Access Token."
+            echo "👉 Add DOCKERHUB_USERNAME (e.g. aayushlabs) and DOCKERHUB_TOKEN (Personal Access Token)."
             exit 1
           else
-            echo "✅ Docker secret is present."
+            echo "✅ Docker secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are present."
           fi
 
       - name: Set up Docker Buildx
@@ -103,8 +102,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME || 'aayushlabs' }}
-          password: ${{ secrets.DOCKER_PASSWORD || secrets.DOCKER_TOKEN || secrets.DOCKER_HUB_PASSWORD || secrets.DOCKER_HUB_TOKEN || secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
